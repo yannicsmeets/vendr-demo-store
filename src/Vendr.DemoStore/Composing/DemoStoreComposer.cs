@@ -8,16 +8,20 @@ using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Extensions;
 using Umbraco.Cms.Core.Notifications;
+using Vendr.Core.Calculators;
+using Vendr.DemoStore.Calculators;
 
 namespace Vendr.DemoStore.Composing
 {
     [ComposeAfter(typeof(VendrComposer))]
-    public class DemoStoreComposer : IUserComposer
+    public class DemoStoreComposer : IComposer
     {
         public void Compose(IUmbracoBuilder builder)
         {
             // Replace the umbraco product name extractor with one that supports child variants
             builder.Services.AddUnique<IUmbracoProductNameExtractor, CompositeProductNameExtractor>();
+
+            builder.Services.AddUnique<IShippingCalculator, CustomShippingCalculator>();
 
             // Register event handlers
             builder.WithNotificationEvent<OrderProductAddingNotification>()
