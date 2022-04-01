@@ -5665,7 +5665,7 @@
 
     function OrderEditController($scope, $routeParams, $location, formHelper, angularHelper,
         appState, editorState, editorService, localizationService, notificationsService, navigationService, overlayService,
-        vendrUtils, vendrOrderResource, vendrEmailResource, vendrActions) {
+        vendrUtils, vendrOrderResource, vendrActivityLogResource, vendrActions) {
 
         var infiniteMode = editorService.getNumberOfEditors() > 0 ? true : false;
         var compositeId = infiniteMode
@@ -5778,6 +5778,23 @@
         };
         vm.content = {};
         vm.storeId = storeId;
+
+        vm.activityLog = {
+            loading: true,
+            entries: {
+                items: [],
+                pageNumber: 1,
+                pageSize: 10
+            }
+        }
+
+        vm.loadActivityLog = function (page) {
+            vm.activityLog.loading = true;
+            vendrActivityLogResource.getActivityLogsByEntity(id, "Order", page, vm.activityLog.entries.pageSize).then(function (activityLogs) {
+                vm.activityLog.entries = activityLogs;
+                vm.activityLog.loading = false;
+            });
+        }
 
         vm.close = function () {
             if ($scope.model.close) {
@@ -5908,6 +5925,9 @@
                         vm.content.paymentStatus = order.paymentStatus;
                         vm.content.paymentStatusName = order.paymentStatusName;
                     });
+
+                    // Load activity log
+                    vm.loadActivityLog(1);
                 });
             });
         };
@@ -5976,8 +5996,9 @@
                 vm.content.paymentStatusName = order.paymentStatusName;
                 vm.capturePaymentButtonState = 'success';
                 notificationsService.success("Payment Captured", "Pending payment successfully captured.");
+                vm.loadActivityLog(1);
             }, function (err) {
-                    vm.capturePaymentButtonState = 'error';
+                vm.capturePaymentButtonState = 'error';
             });
         };
 
@@ -5992,6 +6013,7 @@
                 vm.content.paymentStatusName = order.paymentStatusName;
                 vm.refundPaymentButtonState = 'success';
                 notificationsService.success("Payment Refunded", "Captured payment successfully refunded.");
+                vm.loadActivityLog(1);
             }, function (err) {
                 vm.refundPaymentButtonState = 'error';
             });
@@ -6082,6 +6104,16 @@
         };
 
         vm.init();
+
+        $scope.$on("vendrEntityChanged", function (evt, args) {
+            if (args.entityType === 'Order' && args.storeId === storeId && args.entityId === id) {
+                vendrOrderResource.getOrder(id).then(function (order) {
+                    vm.content.orderStatusId = order.orderStatusId;
+                    vm.content.orderStatus = order.orderStatus;
+                });
+                vm.loadActivityLog(1);
+            }
+        });
 
         $scope.$on("vendrEntityDeleted", function (evt, args) {
             if ((args.entityType === 'Cart' || args.entityType === 'Order') && args.storeId === storeId && args.entityId === id) {
